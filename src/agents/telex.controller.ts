@@ -11,7 +11,11 @@ export class TelexController {
 
 
     constructor(private readonly agentService: AgentsService) { }
-
+  @Get()
+  getRoot() {
+    this.logger.log('Root route hit');
+    return { message: '✅ Telex AI Agent running on Railway!' };
+  }
            
  @Post()
   @HttpCode(200)
