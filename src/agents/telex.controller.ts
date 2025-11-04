@@ -34,7 +34,7 @@ export class TelexController {
     
 
 
-    @Get('.well-known/agent.json')
+    @Get('/.well-known/agent.json')
     getAgentCard(): AgentCardDto {
         this.logger.log('Agent card requested');
         return this.agentService.getAgentCard();
