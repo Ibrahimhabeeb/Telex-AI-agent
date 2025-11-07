@@ -4,10 +4,10 @@ export class AgentCardDto {
   url = process.env.AGENT_BASE_URL || 'http://localhost:3000';
   provider = {
     organization: process.env.AGENT_ORGANIZATION || 'Your Org',
-    url: process.env.AGENT_BASE_URL || 'http://localhost:3000',
+    url: "https://telex-ai-agent-production-fb6a.up.railway.app"
   };
   version = '1.0.0';
-  documentationUrl = `${this.url}/docs`;
+  documentationUrl = `https://telex-ai-agent-production-fb6a.up.railway.app/docs`;
   capabilities = {
     streaming: true,
     pushNotifications: false,
