@@ -109,7 +109,7 @@ export class AgentsService {
         
             this.tasks.set(taskId, task);
         
-            const result = await this.mastraService.summarizeAudioTranscript(audioUrl);
+            const result = await this.mastraService.summarizeAudio(audioUrl);
 
             const responseMessage: Message = {
                 role: 'agent',
