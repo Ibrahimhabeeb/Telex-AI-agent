@@ -52,84 +52,116 @@ export class MastraService implements OnModuleInit {
 
  
 async handleA2ARequest(request: any): Promise<any> {
-  const { id, params } = request;
+  const { id: requestId, params } = request;
   const message = params?.message;
 
   if (!message) {
-    return this.createErrorResponse(id, null, 'Missing message in request');
+    return this.createErrorResponse(requestId, null, 'Missing message in request');
   }
 
   const textPart = message.parts?.find((p) => p.kind === 'text')?.text;
   if (!textPart) {
-    return this.createErrorResponse(id, message, 'No valid text input found.');
+    return this.createErrorResponse(requestId, message, 'No valid text input found.');
   }
 
   const audioUrlMatch = textPart.match(/https?:\/\/[^\s]+/);
   const audioUrl = audioUrlMatch ? audioUrlMatch[0] : null;
 
   if (!audioUrl) {
-    return this.createErrorResponse(id, message, 'No valid audio URL found.');
+    return this.createErrorResponse(requestId, message, 'No valid audio URL found.');
   }
 
   try {
     const summary = await this.summarizeAudio(audioUrl);
+
     const taskId = message.taskId || randomUUID();
     const contextId = message.contextId || randomUUID();
 
+    // Build artifacts (optional, can include the summary as a text artifact)
+    const artifacts = [
+      {
+        artifactId: randomUUID(),
+        name: 'AudioSummary',
+        parts: [{ kind: 'text', text: summary }]
+      }
+    ];
+
+    // Build conversation history
+    const history = [
+      {
+        kind: 'message',
+        role: message.role || 'user',
+        parts: message.parts,
+        messageId: message.messageId || randomUUID(),
+        taskId,
+      },
+      {
+        kind: 'message',
+        role: 'agent',
+        parts: [{ kind: 'text', text: summary }],
+        messageId: randomUUID(),
+        taskId,
+      }
+    ];
+
     return {
       jsonrpc: '2.0',
-      id,
+      id: requestId,
       result: {
-        Task: {
-          status: {
-            state: 'completed',
-            timestamp: new Date().toISOString(),
-            message: {
-              role: 'agent',
-              kind: 'message',
-              parts: [{ kind: 'text', text: summary }],
-              messageId: message.messageId,
-              taskId,
-              contextId,
-            },
+        id: taskId,
+        contextId,
+        status: {
+          state: 'completed',
+          timestamp: new Date().toISOString(),
+          message: {
+            role: 'agent',
+            kind: 'message',
+            parts: [{ kind: 'text', text: summary }],
+            messageId: randomUUID(),
+            taskId,
           },
         },
-      },
+        artifacts,
+        history,
+        kind: 'task'
+      }
     };
+
   } catch (error) {
-    return this.createErrorResponse(id, message, `Error processing audio: ${error.message}`);
+    return this.createErrorResponse(requestId, message, `Error processing audio: ${error.message}`);
   }
 }
 
-
-
-  /**
-   * Helper to create an A2A-compliant error response
-   */
-private createErrorResponse(id: string, message: any, errorText: string) {
+/**
+ * Helper to create an A2A-compliant error response
+ */
+private createErrorResponse(requestId: string, message: any, errorText: string) {
   const taskId = message?.taskId || randomUUID();
   const contextId = message?.contextId || randomUUID();
 
   return {
     jsonrpc: '2.0',
-    id,
+    id: requestId,
     result: {
-      Task: {
-        status: {
-          state: 'failed',
-          timestamp: new Date().toISOString(),
-          message: {
-            role: 'agent',
-            kind: 'message',
-            parts: [{ kind: 'text', text: errorText }],
-            messageId: message?.messageId || randomUUID(),
-            taskId,
-            contextId,
-          },
+      id: taskId,
+      contextId,
+      status: {
+        state: 'failed',
+        timestamp: new Date().toISOString(),
+        message: {
+          role: 'agent',
+          kind: 'message',
+          parts: [{ kind: 'text', text: errorText }],
+          messageId: message?.messageId || randomUUID(),
+          taskId,
         },
       },
-    },
+      artifacts: [],
+      history: [],
+      kind: 'task'
+    }
   };
 }
+
 
 }
