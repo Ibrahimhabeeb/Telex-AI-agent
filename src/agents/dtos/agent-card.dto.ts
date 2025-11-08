@@ -1,6 +1,6 @@
 export class AgentCardDto {
-  name = process.env.AGENT_NAME || 'Audio Intelligence Agent';
-  description = 'An AI agent that analyzes content from URLs or audio files, providing insights such as speech-to-text conversion and sentiment analysis.';
+  name = process.env.AGENT_NAME || 'Content Intelligence Agent';
+  description = 'An AI agent that analyzes content from URLs or text, providing insights such as text analysis, summarization, and sentiment detection.';
   url = "https://telex-ai-agent-production-fb6a.up.railway.app";
   provider = {
     organization: process.env.AGENT_ORGANIZATION || 'Your Org',
@@ -9,40 +9,45 @@ export class AgentCardDto {
   version = '1.0.0';
   documentationUrl = `https://telex-ai-agent-production-fb6a.up.railway.app/docs`;
   capabilities = {
-    streaming: true,
+    streaming: false,  // set to false since no audio streaming
     pushNotifications: false,
     stateTransitionHistory: true,
   };
 
-  // Changed to accept URL and text as default input
-  defaultInputModes = ['url', 'text'];
-  defaultOutputModes = ['text', 'markdown'];
+  defaultInputModes = ['url', 'text'];        // only text or URL
+  defaultOutputModes = ['text', 'markdown'];  // only text/markdown outputs
 
   skills = [
     {
       id: 'transcribe_content',
-      name: 'Transcribe Content',
-      description: 'Convert speech from audio or content from a URL into text, and analyze sentiment or tone.',
-      inputModes: ['audio', 'url', 'text'], // now accepts audio, URL, or text
+      name: 'Process Content',
+      description: 'Process and analyze content from a URL or plain text, providing summaries or sentiment analysis.',
+      inputModes: ['url', 'text'],        // removed 'audio'
       outputModes: ['text', 'markdown'],
       examples: [
-        'Transcribe this audio clip.',
-        'Summarize this podcast episode from URL.',
-        'Analyze this text for sentiment.',
-      ],
+        {
+          input: { parts: [{ text: 'Summarize this article from URL.', contentType: 'text/plain' }] },
+          output: { parts: [{ text: 'Summary goes here...', contentType: 'text/plain' }] }
+        },
+        {
+          input: { parts: [{ text: 'Analyze this text for sentiment.', contentType: 'text/plain' }] },
+          output: { parts: [{ text: 'Positive sentiment detected.', contentType: 'text/plain' }] }
+        }
+      ]
     },
     {
       id: 'analyze_content',
       name: 'Analyze Content',
-      description: 'Detect emotions, classify speakers, or provide insights from audio, URL, or text content.',
-      inputModes: ['audio', 'url', 'text'], // now accepts audio, URL, or text
+      description: 'Analyze text content from a URL or plain text to detect sentiment, tone, or key insights.',
+      inputModes: ['url', 'text'],       // removed 'audio'
       outputModes: ['text', 'markdown'],
       examples: [
-        'Analyze emotions in this audio file.',
-        'Who sounds angry or happy in this recording?',
-        'Analyze this URL for key insights.',
-      ],
-    },
+        {
+          input: { parts: [{ text: 'Analyze this article for key points.', contentType: 'text/plain' }] },
+          output: { parts: [{ text: 'Key points extracted...', contentType: 'text/plain' }] }
+        }
+      ]
+    }
   ];
 
   supportsAuthenticatedExtendedCard = false;
