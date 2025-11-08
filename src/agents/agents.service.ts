@@ -60,98 +60,88 @@ export class AgentsService {
 
     }
     
-    private async handleMessageSend(message: Message, id) {
-        try {
-            if (!message || !message.messageId) {
-                throw new Error('Invalid message: messageId is required');
-            }
+private async handleMessageSend(message: Message, id) {
+    try {
+        // Generate messageId if missing
+        const messageId = message?.messageId || this.generateId();
 
-
-            const taskId = message.taskId || this.generateId();
-            const contextId = message.contextId || this.generateId();
-         
-
-            this.logger.log(`Processing message: ${message.messageId}, Task: ${taskId}`);
-            const audioUrl = this.extractAudioUrl(message.parts);
-        
-            if (!audioUrl) {
-                // No audio file found, return a help message
-                return this.createSuccessResponse(id, {
-                    role: 'agent',
-                    parts: [
-                        {
-                            kind: 'text',
-                            text: 'Please send an audio file for me to transcribe and summarize. I support audio files from URLs.',
-                        },
-                    ],
-                    kind: 'message',
-                    messageId: this.generateId(),
-                    taskId: taskId,
-                    contextId: contextId
-                })
-            }
-
-            const status = {
-                state: TaskState.Working,
-                timestamp: new Date().toISOString(),
-                message: message
-
+        const taskId = message.taskId || this.generateId();
+        const contextId = message.contextId || this.generateId();
+     
+        this.logger.log(`Processing message: ${messageId}, Task: ${taskId}`);
+        const audioUrl = this.extractAudioUrl(message.parts);
     
-            }
-        
-            const task: Task = {
-                id: taskId,
-                contextId: contextId,
-                status: status,
-                history: [message],
-                kind: 'task',
-            };
-        
-            this.tasks.set(taskId, task);
-        
-            const result = await this.mastraService.summarizeAudio(audioUrl);
-
-            const responseMessage: Message = {
+        if (!audioUrl) {
+            // No audio file found, return a help message
+            return this.createSuccessResponse(id, {
                 role: 'agent',
                 parts: [
                     {
                         kind: 'text',
-                        text: result,
+                        text: 'Please send an audio file for me to transcribe and summarize. I support audio files from URLs.',
                     },
                 ],
                 kind: 'message',
-                messageId: message.messageId,
+                messageId, // use generated messageId
                 taskId: taskId,
-                contextId: contextId,
-            };
-
-            // Update task
-            task.status.state = TaskState.Completed;
-            task.history?.push(responseMessage);
-            this.tasks.set(taskId, task);
-
-            return this.createSuccessResponse(id, responseMessage);
-
-        }
-        catch (error) {
-            this.logger.error('Error processing audio:', error);
-              const errorMessage: Message = {
-        role: 'agent',
-        parts: [
-          {
-            kind: 'text',
-            text: `Sorry, I encountered an error processing the audio: ${error.message}`,
-          },
-        ],
-        kind: 'message',
-        messageId: message.messageId,
-      };
-
-      return this.createSuccessResponse(id, errorMessage);
+                contextId: contextId
+            });
         }
 
+        const status = {
+            state: TaskState.Working,
+            timestamp: new Date().toISOString(),
+            message: message
+        };
     
+        const task: Task = {
+            id: taskId,
+            contextId: contextId,
+            status: status,
+            history: [message],
+            kind: 'task',
+        };
+    
+        this.tasks.set(taskId, task);
+    
+        const result = await this.mastraService.summarizeAudio(audioUrl);
+
+        const responseMessage: Message = {
+            role: 'agent',
+            parts: [
+                { kind: 'text', text: result },
+            ],
+            kind: 'message',
+            messageId, // use generated messageId
+            taskId: taskId,
+            contextId: contextId,
+        };
+
+        // Update task
+        task.status.state = TaskState.Completed;
+        task.history?.push(responseMessage);
+        this.tasks.set(taskId, task);
+
+        return this.createSuccessResponse(id, responseMessage);
+
+    } catch (error) {
+        this.logger.error('Error processing audio:', error);
+
+        const messageId = message?.messageId || this.generateId();
+
+        const errorMessage: Message = {
+            role: 'agent',
+            parts: [
+              { kind: 'text', text: `Sorry, I encountered an error processing the audio: ${error.message}` },
+            ],
+            kind: 'message',
+            messageId, // use generated messageId
+        };
+
+        return this.createSuccessResponse(id, errorMessage);
     }
+}
+
 
 
 
