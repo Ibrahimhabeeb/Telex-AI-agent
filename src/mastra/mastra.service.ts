@@ -98,24 +98,20 @@ export class MastraService implements OnModuleInit {
   /**
    * Helper to create an A2A-compliant error response
    */
-  private createErrorResponse(id: string, message: any, errorText: string) {
-    const taskId = message?.taskId || randomUUID();
-    const contextId = message?.contextId || randomUUID();
-
-    return {
-      jsonrpc: '2.0',
-      id,
-      result: {
-        Task: { status: 'failed' },
-        Message: {
-          role: 'agent',
-          kind: 'message',
-          parts: [{ kind: 'text', text: errorText }],
-          messageId: message?.messageId || randomUUID(),
-          taskId,
-          contextId,
-        },
+ private createErrorResponse(id: string, message: any, errorText: string) {
+  return {
+    jsonrpc: '2.0',
+    id,
+    error: {
+      code: -32000, // -32000 to -32099 are server-defined error codes
+      message: errorText,
+      data: {
+        taskId: message?.taskId,
+        contextId: message?.contextId,
+        messageId: message?.messageId,
       },
-    };
-  }
+    },
+  };
+}
+
 }
