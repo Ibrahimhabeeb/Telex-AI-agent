@@ -50,7 +50,6 @@ export class MastraService implements OnModuleInit {
     }
   }
 
- 
 async handleA2ARequest(request: any): Promise<any> {
   const { id: requestId, params } = request;
   const message = params?.message;
@@ -77,7 +76,7 @@ async handleA2ARequest(request: any): Promise<any> {
     const taskId = message.taskId || randomUUID();
     const contextId = message.contextId || randomUUID();
 
-    // Build artifacts (optional, can include the summary as a text artifact)
+    // Optional artifacts
     const artifacts = [
       {
         artifactId: randomUUID(),
@@ -86,7 +85,7 @@ async handleA2ARequest(request: any): Promise<any> {
       }
     ];
 
-    // Build conversation history
+    // Optional conversation history
     const history = [
       {
         kind: 'message',
@@ -113,13 +112,11 @@ async handleA2ARequest(request: any): Promise<any> {
         status: {
           state: 'completed',
           timestamp: new Date().toISOString(),
-          message: {
-            role: 'agent',
-            kind: 'message',
-            parts: [{ kind: 'text', text: summary }],
-            messageId: randomUUID(),
-            taskId,
-          },
+          role: 'agent',
+          kind: 'message',
+          parts: [{ kind: 'text', text: summary }],
+          messageId: randomUUID(),
+          taskId,
         },
         artifacts,
         history,
@@ -131,6 +128,7 @@ async handleA2ARequest(request: any): Promise<any> {
     return this.createErrorResponse(requestId, message, `Error processing audio: ${error.message}`);
   }
 }
+
 
 /**
  * Helper to create an A2A-compliant error response
@@ -148,13 +146,11 @@ private createErrorResponse(requestId: string, message: any, errorText: string) 
       status: {
         state: 'failed',
         timestamp: new Date().toISOString(),
-        message: {
-          role: 'agent',
-          kind: 'message',
-          parts: [{ kind: 'text', text: errorText }],
-          messageId: message?.messageId || randomUUID(),
-          taskId,
-        },
+        role: 'agent',
+        kind: 'message',
+        parts: [{ kind: 'text', text: errorText }],
+        messageId: message?.messageId || randomUUID(),
+        taskId,
       },
       artifacts: [],
       history: [],
@@ -162,6 +158,7 @@ private createErrorResponse(requestId: string, message: any, errorText: string) 
     }
   };
 }
+
 
 
 }
