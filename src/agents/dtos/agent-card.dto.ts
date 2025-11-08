@@ -1,7 +1,7 @@
 export class AgentCardDto {
   name = process.env.AGENT_NAME || 'Audio Intelligence Agent';
   description = 'An AI agent that analyzes and transcribes audio files, providing insights such as speech-to-text conversion and sentiment analysis.';
-  url = process.env.AGENT_BASE_URL || 'http://localhost:3000';
+  url = "https://telex-ai-agent-production-fb6a.up.railway.app";
   provider = {
     organization: process.env.AGENT_ORGANIZATION || 'Your Org',
     url: "https://telex-ai-agent-production-fb6a.up.railway.app"
