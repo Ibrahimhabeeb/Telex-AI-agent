@@ -60,19 +60,26 @@ export class AgentsService {
 
     }
     
-private async handleMessageSend(message: Message, id) {
+private async handleMessageSend(message: any, id: string) {
     try {
-        // Generate messageId if missing
         const messageId = message?.messageId || this.generateId();
-
         const taskId = message.taskId || this.generateId();
         const contextId = message.contextId || this.generateId();
-     
+
         this.logger.log(`Processing message: ${messageId}, Task: ${taskId}`);
-        const audioUrl = this.extractAudioUrl(message.parts);
-    
+
+        // Safely extract parts array
+        let parts: Part[] = [];
+
+        if (Array.isArray(message.parts)) {
+            parts = message.parts;
+        } else if (message.parts && typeof message.parts === 'object' && Array.isArray(message.parts.data)) {
+            parts = message.parts.data as Part[];
+        }
+
+        const audioUrl = this.extractAudioUrl(parts);
+
         if (!audioUrl) {
-            // No audio file found, return a help message
             return this.createSuccessResponse(id, {
                 role: 'agent',
                 parts: [
@@ -82,28 +89,28 @@ private async handleMessageSend(message: Message, id) {
                     },
                 ],
                 kind: 'message',
-                messageId, // use generated messageId
-                taskId: taskId,
-                contextId: contextId
+                messageId,
+                taskId,
+                contextId,
             });
         }
 
         const status = {
             state: TaskState.Working,
             timestamp: new Date().toISOString(),
-            message: message
+            message,
         };
-    
+
         const task: Task = {
             id: taskId,
-            contextId: contextId,
-            status: status,
+            contextId,
+            status,
             history: [message],
             kind: 'task',
         };
-    
+
         this.tasks.set(taskId, task);
-    
+
         const result = await this.mastraService.summarizeAudio(audioUrl);
 
         const responseMessage: Message = {
@@ -112,9 +119,9 @@ private async handleMessageSend(message: Message, id) {
                 { kind: 'text', text: result },
             ],
             kind: 'message',
-            messageId, // use generated messageId
-            taskId: taskId,
-            contextId: contextId,
+            messageId,
+            taskId,
+            contextId,
         };
 
         // Update task
@@ -124,7 +131,7 @@ private async handleMessageSend(message: Message, id) {
 
         return this.createSuccessResponse(id, responseMessage);
 
-    } catch (error) {
+    } catch (error: any) {
         this.logger.error('Error processing audio:', error);
 
         const messageId = message?.messageId || this.generateId();
@@ -135,12 +142,14 @@ private async handleMessageSend(message: Message, id) {
               { kind: 'text', text: `Sorry, I encountered an error processing the audio: ${error.message}` },
             ],
             kind: 'message',
-            messageId, // use generated messageId
+            messageId,
         };
 
         return this.createSuccessResponse(id, errorMessage);
     }
 }
+
+
 
 
 
