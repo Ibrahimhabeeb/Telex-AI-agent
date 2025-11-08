@@ -13,7 +13,7 @@ export class MastraService {
   private readonly agentKey = 'audioSummarizerAgent';
 
   /**
-   * Initialize Mastra on module start
+   * Initialize Mastra singleton
    */
   async onModuleInit() {
     if (!mastraInstance) {
@@ -21,8 +21,12 @@ export class MastraService {
         agents: { audioSummarizerAgent },
         storage: new LibSQLStore({ url: ':memory:' }),
         logger: new PinoLogger({ name: 'Mastra', level: 'debug' }),
-        observability: { default: { enabled: true } },
-        server: { build: { openAPIDocs: true, swaggerUI: true } },
+        observability: {
+          default: { enabled: true },
+        },
+        server: {
+          build: { openAPIDocs: true, swaggerUI: true },
+        },
       });
       this.logger.log('Mastra initialized ✅');
     } else {
@@ -33,9 +37,11 @@ export class MastraService {
   }
 
   /**
-   * Summarize an audio file via the Mastra agent
-   * @param audioUrl - URL of the audio to summarize
-   * @returns The generated summary text
+   * Summarize a given audio URL using the Mastra agent.
+   * This method does NOT handle A2A protocol wrapping.
+   *
+   * @param audioUrl - URL of the audio file to summarize
+   * @returns string summary of the audio
    */
   async summarizeAudio(audioUrl: string): Promise<string> {
     if (!this.mastra) {
@@ -43,13 +49,8 @@ export class MastraService {
     }
 
     try {
-      // Retrieve the agent instance
       const agentInstance = this.mastra.getAgent(this.agentKey);
-
-      // Construct the prompt for audio summarization
       const prompt = `Please summarize this audio file: ${audioUrl}`;
-
-      // Generate the summary via Mastra agent
       const result = await agentInstance.generate(prompt);
 
       return result.text || 'No summary generated.';
