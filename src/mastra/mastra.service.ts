@@ -51,8 +51,7 @@ export class MastraService implements OnModuleInit {
   }
 
  
-  
- async handleA2ARequest(request: any): Promise<any> {
+async handleA2ARequest(request: any): Promise<any> {
   const { id, params } = request;
   const message = params?.message;
 
@@ -81,12 +80,20 @@ export class MastraService implements OnModuleInit {
       jsonrpc: '2.0',
       id,
       result: {
-        role: 'agent',
-        kind: 'message',
-        parts: [{ kind: 'text', text: summary }],
-        messageId: message.messageId,
-        taskId,
-        contextId,
+        Task: {
+          status: {
+            state: 'completed',
+            timestamp: new Date().toISOString(),
+            message: {
+              role: 'agent',
+              kind: 'message',
+              parts: [{ kind: 'text', text: summary }],
+              messageId: message.messageId,
+              taskId,
+              contextId,
+            },
+          },
+        },
       },
     };
   } catch (error) {
@@ -95,20 +102,31 @@ export class MastraService implements OnModuleInit {
 }
 
 
+
   /**
    * Helper to create an A2A-compliant error response
    */
- private createErrorResponse(id: string, message: any, errorText: string) {
+private createErrorResponse(id: string, message: any, errorText: string) {
+  const taskId = message?.taskId || randomUUID();
+  const contextId = message?.contextId || randomUUID();
+
   return {
     jsonrpc: '2.0',
     id,
-    error: {
-      code: -32000, // -32000 to -32099 are server-defined error codes
-      message: errorText,
-      data: {
-        taskId: message?.taskId,
-        contextId: message?.contextId,
-        messageId: message?.messageId,
+    result: {
+      Task: {
+        status: {
+          state: 'failed',
+          timestamp: new Date().toISOString(),
+          message: {
+            role: 'agent',
+            kind: 'message',
+            parts: [{ kind: 'text', text: errorText }],
+            messageId: message?.messageId || randomUUID(),
+            taskId,
+            contextId,
+          },
+        },
       },
     },
   };
