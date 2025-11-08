@@ -1,6 +1,6 @@
 export class AgentCardDto {
   name = process.env.AGENT_NAME || 'Audio Intelligence Agent';
-  description = 'An AI agent that analyzes and transcribes audio files, providing insights such as speech-to-text conversion and sentiment analysis.';
+  description = 'An AI agent that analyzes content from URLs or audio files, providing insights such as speech-to-text conversion and sentiment analysis.';
   url = "https://telex-ai-agent-production-fb6a.up.railway.app";
   provider = {
     organization: process.env.AGENT_ORGANIZATION || 'Your Org',
@@ -13,32 +13,37 @@ export class AgentCardDto {
     pushNotifications: false,
     stateTransitionHistory: true,
   };
-  defaultInputModes = ['audio'];
+
+  // Changed to accept URL and text as default input
+  defaultInputModes = ['url', 'text'];
   defaultOutputModes = ['text', 'markdown'];
+
   skills = [
     {
-      id: 'transcribe_audio',
-      name: 'Transcribe Audio',
-      description: 'Convert speech to text and analyze the sentiment or tone of the conversation.',
-      inputModes: ['audio'],
+      id: 'transcribe_content',
+      name: 'Transcribe Content',
+      description: 'Convert speech from audio or content from a URL into text, and analyze sentiment or tone.',
+      inputModes: ['audio', 'url', 'text'], // now accepts audio, URL, or text
       outputModes: ['text', 'markdown'],
       examples: [
         'Transcribe this audio clip.',
-        'What is being discussed in this recording?',
-        'Summarize this podcast episode.',
+        'Summarize this podcast episode from URL.',
+        'Analyze this text for sentiment.',
       ],
     },
     {
-      id: 'analyze_audio',
-      name: 'Analyze Audio',
-      description: 'Detect emotions, classify speakers, and provide insights from audio content.',
-      inputModes: ['audio'],
+      id: 'analyze_content',
+      name: 'Analyze Content',
+      description: 'Detect emotions, classify speakers, or provide insights from audio, URL, or text content.',
+      inputModes: ['audio', 'url', 'text'], // now accepts audio, URL, or text
       outputModes: ['text', 'markdown'],
       examples: [
-        'Analyze the emotions in this audio file.',
+        'Analyze emotions in this audio file.',
         'Who sounds angry or happy in this recording?',
+        'Analyze this URL for key insights.',
       ],
     },
   ];
+
   supportsAuthenticatedExtendedCard = false;
 }
