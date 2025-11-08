@@ -50,56 +50,50 @@ export class MastraService implements OnModuleInit {
     }
   }
 
-  /**
-   * Handle an A2A JSON-RPC request in a Telex-compliant way
-   */
-  async handleA2ARequest(request: any): Promise<any> {
-    const { id, params } = request;
-    const message = params?.message;
+ 
+  
+ async handleA2ARequest(request: any): Promise<any> {
+  const { id, params } = request;
+  const message = params?.message;
 
-    if (!message) {
-      return this.createErrorResponse(id, null, 'Missing message in request');
-    }
-
-    const textPart = message.parts?.find((p) => p.kind === 'text')?.text;
-    if (!textPart) {
-      return this.createErrorResponse(id, message, 'No valid text input found.');
-    }
-
-    // Extract the first audio URL in the text
-    const audioUrlMatch = textPart.match(/https?:\/\/[^\s]+/);
-    const audioUrl = audioUrlMatch ? audioUrlMatch[0] : null;
-
-    if (!audioUrl) {
-      return this.createErrorResponse(id, message, 'No valid audio URL found.');
-    }
-
-    try {
-      const summary = await this.summarizeAudio(audioUrl);
-
-      // ✅ Proper Telex A2A response
-      const taskId = message.taskId || randomUUID();
-      const contextId = message.contextId || randomUUID();
-
-      return {
-        jsonrpc: '2.0',
-        id,
-        result: {
-          Task: { status: 'completed' },
-          Message: {
-            role: 'agent',
-            kind: 'message',
-            parts: [{ kind: 'text', text: summary }],
-            messageId: message.messageId,
-            taskId,
-            contextId,
-          },
-        },
-      };
-    } catch (error) {
-      return this.createErrorResponse(id, message, `Error processing audio: ${error.message}`);
-    }
+  if (!message) {
+    return this.createErrorResponse(id, null, 'Missing message in request');
   }
+
+  const textPart = message.parts?.find((p) => p.kind === 'text')?.text;
+  if (!textPart) {
+    return this.createErrorResponse(id, message, 'No valid text input found.');
+  }
+
+  const audioUrlMatch = textPart.match(/https?:\/\/[^\s]+/);
+  const audioUrl = audioUrlMatch ? audioUrlMatch[0] : null;
+
+  if (!audioUrl) {
+    return this.createErrorResponse(id, message, 'No valid audio URL found.');
+  }
+
+  try {
+    const summary = await this.summarizeAudio(audioUrl);
+    const taskId = message.taskId || randomUUID();
+    const contextId = message.contextId || randomUUID();
+
+    return {
+      jsonrpc: '2.0',
+      id,
+      result: {
+        role: 'agent',
+        kind: 'message',
+        parts: [{ kind: 'text', text: summary }],
+        messageId: message.messageId,
+        taskId,
+        contextId,
+      },
+    };
+  } catch (error) {
+    return this.createErrorResponse(id, message, `Error processing audio: ${error.message}`);
+  }
+}
+
 
   /**
    * Helper to create an A2A-compliant error response
