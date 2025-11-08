@@ -120,7 +120,7 @@ export class AgentsService {
                     },
                 ],
                 kind: 'message',
-                messageId: this.generateId(),
+                messageId: message.messageId,
                 taskId: taskId,
                 contextId: contextId,
             };
@@ -144,7 +144,7 @@ export class AgentsService {
           },
         ],
         kind: 'message',
-        messageId: this.generateId(),
+        messageId: message.messageId,
       };
 
       return this.createSuccessResponse(id, errorMessage);
