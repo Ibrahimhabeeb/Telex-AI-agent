@@ -61,96 +61,100 @@ export class AgentsService {
     }
     
 private async handleMessageSend(message: any, id: string) {
-    try {
-        const messageId = message?.messageId || this.generateId();
-        const taskId = message.taskId || this.generateId();
-        const contextId = message.contextId || this.generateId();
+  const messageId = message?.messageId || this.generateId();
+  const taskId = message?.taskId || this.generateId();
+  const contextId = message?.contextId || this.generateId();
 
-        this.logger.log(`Processing message: ${messageId}, Task: ${taskId}`);
+  this.logger.log(`Processing message: ${messageId}, Task: ${taskId}`);
 
-        // Safely extract parts array
-        let parts: Part[] = [];
+  // Safely extract parts
+  let parts: Part[] = [];
+  if (Array.isArray(message.parts)) {
+    parts = message.parts;
+  } else if (message.parts && typeof message.parts === 'object' && Array.isArray(message.parts.data)) {
+    parts = message.parts.data as Part[];
+  }
 
-        if (Array.isArray(message.parts)) {
-            parts = message.parts;
-        } else if (message.parts && typeof message.parts === 'object' && Array.isArray(message.parts.data)) {
-            parts = message.parts.data as Part[];
-        }
+  // Recursively extract audio URL
+  const audioUrl = this.extractAudioUrlRecursive(parts);
 
-        const audioUrl = this.extractAudioUrl(parts);
+  // Initialize task
+  const task: Task = {
+    id: taskId,
+    contextId,
+    status: {
+      state: audioUrl ? TaskState.Working : TaskState.InputRequired,
+      timestamp: new Date().toISOString(),
+      message,
+    },
+    history: [message],
+    kind: 'task',
+  };
 
-        if (!audioUrl) {
-            return this.createSuccessResponse(id, {
-                role: 'agent',
-                parts: [
-                    {
-                        kind: 'text',
-                        text: 'Please send an audio file for me to transcribe and summarize. I support audio files from URLs.',
-                    },
-                ],
-                kind: 'message',
-                messageId,
-                taskId,
-                contextId,
-            });
-        }
+  this.tasks.set(taskId, task);
 
-        const status = {
-            state: TaskState.Working,
-            timestamp: new Date().toISOString(),
-            message,
-        };
+  // If no audio URL found
+  if (!audioUrl) {
+    task.status.state = TaskState.Completed;
+    const noAudioMessage: Message = {
+      role: 'agent',
+      parts: [
+        {
+          kind: 'text',
+          text: 'Please send an audio file for me to transcribe and summarize. I support audio URLs.',
+        },
+      ],
+      kind: 'message',
+      messageId: this.generateId(),
+      taskId,
+      contextId,
+    };
 
-        const task: Task = {
-            id: taskId,
-            contextId,
-            status,
-            history: [message],
-            kind: 'task',
-        };
+    task.history?.push(noAudioMessage);
+    this.tasks.set(taskId, task);
 
-        this.tasks.set(taskId, task);
+    return this.createSuccessResponse(id, task);
+  }
 
-        const result = await this.mastraService.summarizeAudio(audioUrl);
+  try {
+    // Process the audio
+    const result = await this.mastraService.summarizeAudio(audioUrl);
 
-        const responseMessage: Message = {
-            role: 'agent',
-            parts: [
-                { kind: 'text', text: result },
-            ],
-            kind: 'message',
-            messageId,
-            taskId,
-            contextId,
-        };
+    const responseMessage: Message = {
+      role: 'agent',
+      parts: [{ kind: 'text', text: result }],
+      kind: 'message',
+      messageId: this.generateId(),
+      taskId,
+      contextId,
+    };
 
-        // Update task
-        task.status.state = TaskState.Completed;
-        task.history?.push(responseMessage);
-        this.tasks.set(taskId, task);
+    // Update task
+    task.status.state = TaskState.Completed;
+    task.history?.push(responseMessage);
+    this.tasks.set(taskId, task);
 
-        return this.createSuccessResponse(id, responseMessage);
+    return this.createSuccessResponse(id, task);
 
-    } catch (error: any) {
-        this.logger.error('Error processing audio:', error);
+  } catch (error: any) {
+    this.logger.error('Error processing audio:', error);
 
-        const messageId = message?.messageId || this.generateId();
+    const errorMessage: Message = {
+      role: 'agent',
+      parts: [{ kind: 'text', text: `Sorry, I encountered an error processing the audio: ${error.message}` }],
+      kind: 'message',
+      messageId: this.generateId(),
+      taskId,
+      contextId,
+    };
 
-        const errorMessage: Message = {
-            role: 'agent',
-            parts: [
-              { kind: 'text', text: `Sorry, I encountered an error processing the audio: ${error.message}` },
-            ],
-            kind: 'message',
-            messageId,
-        };
+    task.status.state = TaskState.Failed;
+    task.history?.push(errorMessage);
+    this.tasks.set(taskId, task);
 
-        return this.createSuccessResponse(id, errorMessage);
-    }
+    return this.createSuccessResponse(id, task);
+  }
 }
-
-
-
 
 
 
@@ -176,22 +180,21 @@ private async handleMessageSend(message: any, id: string) {
    private generateId(): string {
     return randomUUID();
   }
-  
-private extractAudioUrl(parts: Part[]): string | null {
+private extractAudioUrlRecursive(parts: Part[]): string | null {
   for (const part of parts) {
     if (part.kind === 'file') {
-      const filePart = part as FilePart;
-      if (filePart.mimeType?.startsWith('audio/') || 
-          filePart.url?.match(/\.(mp3|wav|ogg|m4a|flac)$/i)) {
-        return filePart.url;
-      }
+      return (part as any).url;
     }
 
-    // Accept direct audio URLs in text parts
     if (part.kind === 'text') {
       const text = (part as any).text as string;
-      const urlMatch = text.match(/https?:\/\/\S+\.(mp3|wav|ogg|m4a|flac)/i);
-      if (urlMatch) return urlMatch[0];
+      const match = text.match(/https?:\/\/\S+\.(mp3|wav|ogg|m4a|flac)/i);
+      if (match) return match[0];
+    }
+
+    if (part.kind === 'data' && Array.isArray((part as any).data)) {
+      const nested = this.extractAudioUrlRecursive((part as any).data);
+      if (nested) return nested;
     }
   }
   return null;
