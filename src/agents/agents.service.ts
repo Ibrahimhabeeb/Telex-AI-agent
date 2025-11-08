@@ -175,21 +175,28 @@ private async handleMessageSend(message: any, id: string) {
     }
    private generateId(): string {
     return randomUUID();
-    }
-    
-  private extractAudioUrl(parts: Part[]): string | null {
-    for (const part of parts) {
-      if (part.kind === 'file') {
-        const filePart = part as FilePart;
-        // Check if it's an audio file
-        if (filePart.mimeType?.startsWith('audio/') || 
-            filePart.url?.match(/\.(mp3|wav|ogg|m4a|flac)$/i)) {
-          return filePart.url;
-        }
+  }
+  
+private extractAudioUrl(parts: Part[]): string | null {
+  for (const part of parts) {
+    if (part.kind === 'file') {
+      const filePart = part as FilePart;
+      if (filePart.mimeType?.startsWith('audio/') || 
+          filePart.url?.match(/\.(mp3|wav|ogg|m4a|flac)$/i)) {
+        return filePart.url;
       }
     }
-    return null;
+
+    // Accept direct audio URLs in text parts
+    if (part.kind === 'text') {
+      const text = (part as any).text as string;
+      const urlMatch = text.match(/https?:\/\/\S+\.(mp3|wav|ogg|m4a|flac)/i);
+      if (urlMatch) return urlMatch[0];
     }
+  }
+  return null;
+}
+
     
      private createSuccessResponse(id: number | string, result: any): A2AResponseDto {
     return {
