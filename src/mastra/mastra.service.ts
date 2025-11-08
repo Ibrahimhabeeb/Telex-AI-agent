@@ -3,7 +3,6 @@ import { Mastra } from '@mastra/core/mastra';
 import { PinoLogger } from '@mastra/loggers';
 import { LibSQLStore } from '@mastra/libsql';
 import { audioSummarizerAgent } from './mastra.agent';
-import { randomUUID } from 'crypto';
 
 let mastraInstance: Mastra | null = null;
 
@@ -13,18 +12,17 @@ export class MastraService {
   private readonly logger = new Logger(MastraService.name);
   private readonly agentKey = 'audioSummarizerAgent';
 
+  /**
+   * Initialize Mastra on module start
+   */
   async onModuleInit() {
     if (!mastraInstance) {
       mastraInstance = new Mastra({
         agents: { audioSummarizerAgent },
         storage: new LibSQLStore({ url: ':memory:' }),
         logger: new PinoLogger({ name: 'Mastra', level: 'debug' }),
-        observability: {
-          default: { enabled: true },
-        },
-        server: {
-          build: { openAPIDocs: true, swaggerUI: true },
-        },
+        observability: { default: { enabled: true } },
+        server: { build: { openAPIDocs: true, swaggerUI: true } },
       });
       this.logger.log('Mastra initialized ✅');
     } else {
@@ -35,65 +33,9 @@ export class MastraService {
   }
 
   /**
-   * Handle A2A JSON-RPC requests directly (Telex-compatible)
-   */
-  async handleJsonRpc(request: any): Promise<any> {
-    const { id, params } = request;
-
-    try {
-      const message = params?.message;
-      if (!message) throw new Error('Missing message in request');
-
-      const userMessage = message?.parts?.find((p) => p.kind === 'text')?.text;
-      if (!userMessage) throw new Error('No valid text input found.');
-
-      // Extract audio URL if present
-      const audioUrlMatch = userMessage.match(/https?:\/\/[^\s]+/);
-      const audioUrl = audioUrlMatch ? audioUrlMatch[0] : null;
-
-      if (!audioUrl) throw new Error('No valid audio URL found.');
-
-      // Use Mastra agent to summarize
-      const summary = await this.summarizeAudio(audioUrl);
-
-      // ✅ Return Telex-compliant A2A message response
-      return {
-        jsonrpc: '2.0',
-        id,
-        result: {
-          role: 'agent',
-          messageId: randomUUID(),
-          parts: [
-            {
-              kind: 'text',
-              text: summary || 'Audio summarized successfully!',
-            },
-          ],
-        },
-      };
-    } catch (error) {
-      this.logger.error(`❌ Error in handleJsonRpc: ${error.message}`);
-
-      // Return valid A2A error structure
-      return {
-        jsonrpc: '2.0',
-        id,
-        result: {
-          role: 'agent',
-          messageId: randomUUID(),
-          parts: [
-            {
-              kind: 'text',
-              text: `Sorry, I encountered an error processing the audio: ${error.message}`,
-            },
-          ],
-        },
-      };
-    }
-  }
-
-  /**
-   * Summarize the given audio URL using Mastra agent
+   * Summarize an audio file via the Mastra agent
+   * @param audioUrl - URL of the audio to summarize
+   * @returns The generated summary text
    */
   async summarizeAudio(audioUrl: string): Promise<string> {
     if (!this.mastra) {
@@ -101,8 +43,13 @@ export class MastraService {
     }
 
     try {
+      // Retrieve the agent instance
       const agentInstance = this.mastra.getAgent(this.agentKey);
+
+      // Construct the prompt for audio summarization
       const prompt = `Please summarize this audio file: ${audioUrl}`;
+
+      // Generate the summary via Mastra agent
       const result = await agentInstance.generate(prompt);
 
       return result.text || 'No summary generated.';
